@@ -44,6 +44,17 @@ function validEmail(value: string) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function ageFromDateOfBirth(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const birthDate = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - birthDate.getUTCFullYear();
+  const monthDelta = now.getUTCMonth() - birthDate.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < birthDate.getUTCDate())) age--;
+  return age >= 0 && age < 120 ? age : null;
+}
+
 async function recognisedImage(file: File) {
   const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const ascii = String.fromCharCode(...bytes);
@@ -97,9 +108,15 @@ export async function POST(request: Request) {
 
   const name = textField(data, "name", 2, 100);
   const email = textField(data, "email", 5, 254);
-  const brief = textField(data, "brief", 20, 4_000);
+  const dateOfBirth = textField(data, "dateOfBirth", 10, 10);
+  const idea = textField(data, "idea", 10, 8_000);
+  const roughSize = textField(data, "roughSize", 1, 120);
   const placement = textField(data, "placement", 2, 200);
-  if (!name || !email || !validEmail(email) || !brief || !placement) return json("Please check the enquiry details and try again.", 400);
+  const budget = textField(data, "budget", 1, 120);
+  const age = dateOfBirth ? ageFromDateOfBirth(dateOfBirth) : null;
+  const ageConfirmed = data.get("ageConfirmed") === "yes";
+  if (!name || !email || !validEmail(email) || !dateOfBirth || age === null || !idea || !roughSize || !placement || !budget) return json("Please check the enquiry details and try again.", 400);
+  if (age < 18 || !ageConfirmed) return json("You must confirm you are 18 or over before sending an enquiry.", 400);
 
   const files = data.getAll("references").filter((item): item is File => item instanceof File && item.size > 0);
   if (!files.length || files.length > MAX_FILES) return json("Please add between one and four reference images.", 400);
@@ -116,10 +133,13 @@ export async function POST(request: Request) {
     "",
     `Name: ${name}`,
     `Email: ${email}`,
+    "Age check: 18+ confirmed",
+    `Rough size: ${roughSize}`,
     `Placement: ${placement}`,
+    `Budget: ${budget}`,
     "",
-    "Tattoo brief:",
-    brief,
+    "Ideas for tattoo:",
+    idea,
     "",
     `${references.length} reference image${references.length === 1 ? "" : "s"} attached.`,
   ].join("\n");
@@ -132,8 +152,12 @@ export async function POST(request: Request) {
         secret: appsScriptSecret,
         name,
         email,
-        brief,
+        brief: idea,
+        ageConfirmed: true,
+        idea,
+        roughSize,
         placement,
+        budget,
         subject: `New tattoo enquiry from ${name}`,
         text,
         references: references.map((reference, index) => ({ ...reference, type: files[index].type })),
