@@ -50,6 +50,7 @@ type IntroPhase = "active" | "revealing" | "done" | "skipped";
 
 function FletcherBookIntro({ onPhase }: { onPhase: (phase: IntroPhase) => void }) {
   const wipeFrameRef = useRef<HTMLDivElement>(null);
+  const handRef = useRef<HTMLImageElement>(null);
   const [visible, setVisible] = useState(true);
   const [tracing, setTracing] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -63,14 +64,45 @@ function FletcherBookIntro({ onPhase }: { onPhase: (phase: IntroPhase) => void }
         return;
       }
     } catch {}
-    const traceTimer = window.setTimeout(() => setTracing(true), reducedMotion ? 20 : 260);
-    const revealTimer = window.setTimeout(() => { setLeaving(true); onPhase("revealing"); }, reducedMotion ? 120 : 4550);
-    const finishTimer = window.setTimeout(() => {
-      try { window.sessionStorage.setItem("fletcher-book-intro-seen", "1"); } catch {}
-      setVisible(false);
-      onPhase("done");
-    }, reducedMotion ? 240 : 5250);
-    return () => { window.clearTimeout(traceTimer); window.clearTimeout(revealTimer); window.clearTimeout(finishTimer); };
+    let cancelled = false;
+    let traceTimer = 0;
+    let revealTimer = 0;
+    let finishTimer = 0;
+    let settleFrame = 0;
+    let finalFrame = 0;
+
+    const waitForIntroAssets = async () => {
+      const hand = handRef.current;
+      if (hand && !hand.complete) {
+        await hand.decode().catch(() => undefined);
+      }
+      await document.fonts?.ready?.catch(() => undefined);
+      await new Promise<void>((resolve) => {
+        settleFrame = window.requestAnimationFrame(() => {
+          finalFrame = window.requestAnimationFrame(resolve);
+        });
+      });
+    };
+
+    waitForIntroAssets().then(() => {
+      if (cancelled) return;
+      traceTimer = window.setTimeout(() => setTracing(true), reducedMotion ? 20 : 120);
+      revealTimer = window.setTimeout(() => { setLeaving(true); onPhase("revealing"); }, reducedMotion ? 120 : 4410);
+      finishTimer = window.setTimeout(() => {
+        try { window.sessionStorage.setItem("fletcher-book-intro-seen", "1"); } catch {}
+        setVisible(false);
+        onPhase("done");
+      }, reducedMotion ? 240 : 5110);
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(traceTimer);
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(finishTimer);
+      window.cancelAnimationFrame(settleFrame);
+      window.cancelAnimationFrame(finalFrame);
+    };
   }, [onPhase]);
 
   useEffect(() => {
@@ -109,7 +141,7 @@ function FletcherBookIntro({ onPhase }: { onPhase: (phase: IntroPhase) => void }
   return <div className={`fx-loader book-intro-loader ${tracing ? "is-tracing" : ""} ${leaving ? "is-leaving" : ""}`} role="status" aria-live="polite" aria-label={tracing ? "Wiping cleansing foam to reveal Fletcher Tattoos before opening the artist book" : "Preparing the Fletcher Tattoos artist book"}>
     <div ref={wipeFrameRef} className="book-intro-cover-wipe" aria-hidden="true">
       <div className="book-intro-surface"><i /><i /><i /><i /></div>
-      <img className="fx-wipe-hand-photo book-intro-hand" src="/fletcher/black-glove-cloth.png" alt="" />
+      <img ref={handRef} className="fx-wipe-hand-photo book-intro-hand" src="/fletcher/black-glove-cloth.png" alt="" />
     </div>
     <span className="book-intro-a11y">The Fletcher Tattoos artist book will be ready shortly.</span>
   </div>;
