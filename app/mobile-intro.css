@@ -29,3 +29,42 @@
   96%{left:-5%;top:82%;opacity:1;transform:translate(-30%,-68%) rotate(-7deg) scale(.95)}
   100%{left:-18%;top:90%;opacity:0;transform:translate(-30%,-68%) rotate(-10deg) scale(.9)}
 }
+
+.booking-paper-confirm{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:13px 14px;
+  background:#fff8;
+  border:1px solid #d0bfa4;
+  color:#3a3026;
+  font-size:9px;
+  line-height:1.5;
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:500;
+}
+
+.booking-paper-confirm input{
+  width:18px;
+  height:18px;
+  flex:0 0 auto;
+  margin:1px 0 0;
+  accent-color:#cf483f;
+}
+
+.booking-paper-confirm span{
+  display:block;
+}
+
+@media(max-width:600px){
+  .booking-paper-confirm{
+    padding:12px;
+    font-size:10px;
+  }
+
+  .booking-paper-confirm input{
+    width:20px;
+    height:20px;
+  }
+}
