@@ -2,15 +2,17 @@
 
 The tattoo form posts only to the same-origin server route at `/api/tattoo-enquiry`. That route validates the form, reference-image files and anti-spam checks before forwarding to the configured Google Apps Script endpoint. The endpoint URL, recipient and shared secret are never rendered in browser code.
 
-## One Render setting
+## One Netlify setting
 
-Create this private environment variable on the existing Render service, with a long random value:
+Create this private environment variable on the existing Netlify site, with a long random value:
 
 ```
 AFTATTOOS_APPS_SCRIPT_SECRET=your-long-random-value
 ```
 
 Set the identical value as the Apps Script project property named `INBOUND_SECRET`. Do not put it in client JavaScript, Git or a public script URL.
+
+The website uses date of birth only to verify the person is 18 or over. Date of birth is not forwarded to Gmail or Apps Script; the studio email receives only `18+ confirmed`.
 
 ## Replace the Apps Script implementation
 
@@ -57,6 +59,6 @@ function reply(data) {
 }
 ```
 
-In Apps Script: **Project Settings → Script properties → Add script property**, create `INBOUND_SECRET` with the same private value as Render. Then **Deploy → Manage deployments → Edit → New version → Deploy**. Keep the existing web-app URL.
+In Apps Script: **Project Settings → Script properties → Add script property**, create `INBOUND_SECRET` with the same private value as Netlify. Then **Deploy → Manage deployments → Edit → New version → Deploy**. Keep the existing web-app URL.
 
-The server additionally enforces same-origin requests, a honeypot, a minimum form-fill time, three attempts per IP per 15 minutes, strict text lengths, image MIME/signature checks, four files maximum, 5 MB per file and 12 MB total. Images are forwarded in memory and are not written to the website’s disk.
+The server additionally enforces same-origin requests, a honeypot, a minimum form-fill time, three attempts per IP per 15 minutes, strict text lengths, 18+ date-of-birth validation, mandatory age confirmation, image MIME/signature checks, four files maximum, 5 MB per file and 12 MB total. Images are forwarded in memory and are not written to the website’s disk.
